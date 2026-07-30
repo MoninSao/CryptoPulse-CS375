@@ -29,3 +29,6 @@ if (isPlaceholder(key)) {
 export const supabase = createClient(url, key, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+
+//temps delete soon only for testing supabase connection
