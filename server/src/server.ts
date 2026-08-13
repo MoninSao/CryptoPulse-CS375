@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { supabase } from "./supabase";
 import { initializeRedis } from "./cache/redis";
+import { startPricePoller, stopPricePoller } from "./services/pricePoller";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -34,8 +35,17 @@ async function main() {
 // Initialize Redis
 try {
   await initializeRedis();
+  console.log("Redis connected ✓");
 } catch (err) {
   console.error("Failed to initialize Redis:", err);
+  process.exit(1);
+}
+
+// Start background price poller (depends on Redis being initialized)
+try {
+  await startPricePoller();
+} catch (err) {
+  console.error("Failed to start price poller:", err);
   process.exit(1);
 }
 
@@ -45,9 +55,23 @@ app.get('/health', (req, res) => {
 });
 
 // Start Express server
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+
+  // Graceful shutdown: stop price poller when process terminates
+  const gracefulShutdown = async () => {
+    console.log('\n🛑 Shutting down gracefully...');
+    await stopPricePoller(true); // flush prices on shutdown
+    server.close(() => {
+      console.log('✅ Server closed');
+      process.exit(0);
+    });
+  };
+
+  // Handle termination signals
+  process.on('SIGINT', gracefulShutdown);  // Ctrl+C
+  process.on('SIGTERM', gracefulShutdown); // Docker/PM2 stop
 
   
 }
