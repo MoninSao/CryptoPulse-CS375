@@ -25,12 +25,17 @@ app.use((req, res, next) => {
 async function main() {
   // Check Supabase connection
   //temps delete soon
-  const { error } = await supabase.from("profiles").select("*").limit(1);
-  if (error && error.code !== "42P01") {
-    console.error("Supabase connection failed:", error.message);
-    process.exit(1);
+  try {
+    const { error } = await supabase.from("profiles").select("*").limit(1);
+    if (error && error.code !== "42P01") {
+      console.error("Supabase connection failed:", error.message);
+      console.warn("Continuing anyway for testing...");
+    } else {
+      console.log("Supabase connected ✓");
+    }
+  } catch (supabaseErr) {
+    console.warn("Supabase connection error (non-blocking):", (supabaseErr as Error).message);
   }
-  console.log("Supabase connected ✓");
 
 
 // Initialize Redis

@@ -18,12 +18,12 @@ const router = Router();
 router.get('/prices', async (req, res) => {
   try {
     // Fetch all cached prices from Redis
-    const pricesMap = await getAllCachedPrices();
+    const prices = await getAllCachedPrices();
 
-    // Transform Map to object and add timestamp
+    // Convert numbers to strings (to match Redis storage format)
     const pricesObject: Record<string, string | null> = {};
-    pricesMap.forEach((price, symbol) => {
-      pricesObject[symbol] = price;
+    Object.entries(prices).forEach(([symbol, price]) => {
+      pricesObject[symbol] = price !== null ? price.toString() : null;
     });
 
     // Build response with timestamp
