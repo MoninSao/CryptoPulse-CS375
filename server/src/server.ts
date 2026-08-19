@@ -3,6 +3,7 @@ import cors from 'cors';
 import { supabase } from "./supabase";
 import { initializeRedis } from "./cache/redis";
 import { startPricePoller, stopPricePoller } from "./services/pricePoller";
+import pricesRouter from "./routes/prices";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -44,10 +45,14 @@ try {
 // Start background price poller (depends on Redis being initialized)
 try {
   await startPricePoller();
+  console.log("Price poller started")
 } catch (err) {
   console.error("Failed to start price poller:", err);
   process.exit(1);
 }
+
+// Routes
+app.use('/api', pricesRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
