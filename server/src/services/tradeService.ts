@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
-import { insertTrade } from '../queries/tradeQueries';
-import { getHoldingBySymbol, updateHolding, Holding } from '../queries/holdingQueries';
+import { insertTrade } from '../db/queries/tradeQueries';
+import { getHoldingBySymbol, updateHolding, Holding } from '../db/queries/holdingQueries';
 
 export interface TradeResult {
   trade: {

@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase } from '../../supabase';
 
 export interface Holding {
   id: string;

@@ -26,7 +26,7 @@ if (isPlaceholder(key)) {
   );
 }
 
-export const supabase = createClient(url, key, {
+export const supabase = createClient(url!, key!, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
