@@ -4,6 +4,8 @@ import { supabase } from "./supabase";
 import { initializeRedis } from "./cache/redis";
 import { startPricePoller, stopPricePoller } from "./services/pricePoller";
 import pricesRouter from "./routes/prices";
+import tradingRouter from "./routes/trading";
+import portfolioRouter from "./routes/portfolio";
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -58,6 +60,8 @@ try {
 
 // Routes
 app.use('/api', pricesRouter);
+app.use('/api/trades', tradingRouter);
+app.use('/api/portfolio', portfolioRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
