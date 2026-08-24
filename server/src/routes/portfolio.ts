@@ -4,7 +4,7 @@ import { getAllCachedPrices } from '../services/priceService';
 
 const router = Router();
 
-router.get('/', async (req: Request, res: Response) => {
+router.get('/holdings', async (req: Request, res: Response) => {
   try {
     // Fetch all cached prices from Redis
     const livePrices = await getAllCachedPrices();
