@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CryptoPulse - Real-time Crypto Portfolio</title>
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Navigation -->
+    <nav class="navbar">
+      <div class="nav-container">
+        <div class="nav-brand">
+            
+          <span class="logo">💰</span>
+          <span class="brand-text">CryptoPulse</span>
+        </div>
+        
+
+
+        <ul class="nav-menu">
+          <li><a href="#/market" class="nav-link active" data-page="market">Market</a></li>
+          <li><a href="#/portfolio" class="nav-link" data-page="portfolio">Portfolio</a></li>
+          <li><a href="#/trade" class="nav-link" data-page="trade">Trade</a></li>
+          <li><a href="#/history" class="nav-link" data-page="history">History</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main Content Container -->
+    <main class="main-container">
+      <!-- Page: Live Market View -->
+      <section id="market-page" class="page active">
+        <div class="page-header">
+          <h1>Live Market View</h1>
+          <p class="subtitle">Real-time cryptocurrency prices</p>
+        </div>
+        <div class="market-grid" id="market-grid">
+          <!-- Market cards will be injected here -->
+        </div>
+      </section>
+
+
+      <!-- Page: Buy/Sell Trading -->
+      <section id="trade-page" class="page">
+        <div class="page-header">
+          <h1>Buy / Sell</h1>
+          <p class="subtitle">Execute trades</p>
+        </div>
+        <div class="trade-container">
+          <form class="trade-form" id="trade-form">
+            <div class="form-group">
+              <label for="coin-select">Cryptocurrency</label>
+              <select id="coin-select" class="form-control" required>
+                <option value="">Select a coin...</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="trade-type">Trade Type</label>
+              <div class="radio-group">
+                <label class="radio">
+                  <input type="radio" name="trade-type" value="buy" checked>
+                  <span>Buy</span>
+                </label>
+                <label class="radio">
+                  <input type="radio" name="trade-type" value="sell">
+                  <span>Sell</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="amount">Amount (USD)</label>
+              <input type="number" id="amount" class="form-control" placeholder="0.00" step="0.01" min="0" required>
+            </div>
+
+            <div class="form-group">
+                
+              <label>Current Price</label>
+              <div class="price-display" id="current-price">-</div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block">Execute Trade</button>
+          </form>
+
+          <div class="trade-info">
+            <h3>Transaction Details</h3>
+            <p id="trade-result" class="trade-result"></p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Page: Portfolio -->
+      <section id="portfolio-page" class="page">
+        <div class="page-header">
+          <h1>Portfolio</h1>
+          <p class="subtitle">Your holdings overview</p>
+        </div>
+        
+        <div class="portfolio-summary">
+          <div class="summary-card">
+            <h3>Total Value</h3>
+            <p class="summary-value" id="total-value">$0.00</p>
+          </div>
+          <div class="summary-card">
+            <h3>Total Cost Basis</h3>
+            <p class="summary-value" id="total-cost-basis">$0.00</p>
+          </div>
+          <div class="summary-card">
+            <h3>Gain/Loss</h3>
+            <p class="summary-value" id="total-gain-loss">$0.00</p>
+          </div>
+        </div>
+
+        <div class="holdings-table">
+          <table id="holdings-table">
+            <thead>
+              <tr>
+                <th>Coin</th>
+                <th>Quantity</th>
+                <th>Current Price</th>
+                <th>Value</th>
+                <th>Cost Basis</th>
+                <th>Gain/Loss</th>
+              </tr>
+            </thead>
+            <tbody id="holdings-tbody">
+              <!-- Holdings will be injected here -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Page: Trade History -->
+      <section id="history-page" class="page">
+        <div class="page-header">
+          <h1>Trade History</h1>
+          <p class="subtitle">Your past transactions</p>
+        </div>
+
+        <div class="history-filters">
+          <select id="history-filter" class="form-control">
+            <option value="">All Trades</option>
+            <option value="buy">Buys Only</option>
+            <option value="sell">Sells Only</option>
+          </select>
+        </div>
+
+        <div class="history-table">
+          <table id="trades-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Type</th>
+                <th>Coin</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody id="trades-tbody">
+              <!-- Trade history will be injected here -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="spinner hidden">
+      <div class="spinner-ring"></div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <!-- JavaScript -->
+  <script src="js/router.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/websocket.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
