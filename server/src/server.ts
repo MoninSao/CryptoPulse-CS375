@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import { WebSocketServer } from 'ws';
+import { createServer } from 'http';
 import { supabase } from "./supabase";
 import { initializeRedis } from "./cache/redis";
 import { startPricePoller, stopPricePoller } from "./services/pricePoller";
@@ -8,6 +10,8 @@ import tradingRouter from "./routes/trading";
 import portfolioRouter from "./routes/portfolio";
 
 const app = express();
+const httpServer = createServer(app);
+const wss = new WebSocketServer({ server: httpServer, path: '/ws/prices' });
 const PORT = process.env.PORT || 4000;
 
 // Middleware
@@ -68,17 +72,49 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok'});
 });
 
-// Start Express server
-  const server = app.listen(PORT, () => {
+// WebSocket connection handler for live price updates
+wss.on('connection', (ws) => {
+  console.log(`WebSocket client connected. Total clients: ${wss.clients.size}`);
+  
+  ws.on('close', () => {
+    console.log(`WebSocket client disconnected. Total clients: ${wss.clients.size}`);
+  });
+  
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+});
+
+// Broadcast prices to all WebSocket clients
+// Called by price poller to push real-time updates
+export function broadcastPrices(prices: Record<string, number>) {
+  if (wss.clients.size > 0) {
+    const message = JSON.stringify({
+      type: 'prices',
+      data: prices,
+      timestamp: new Date().toISOString()
+    });
+    
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(message);
+      }
+    });
+  }
+}
+
+// Start HTTP + WebSocket server
+  const server = httpServer.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`WebSocket available at ws://localhost:${PORT}/ws/prices`);
   });
 
   // Graceful shutdown: stop price poller when process terminates
   const gracefulShutdown = async () => {
-    console.log('\n🛑 Shutting down gracefully...');
+    console.log('\n Shutting down gracefully...');
     await stopPricePoller(true); // flush prices on shutdown
     server.close(() => {
-      console.log('✅ Server closed');
+      console.log('Server closed');
       process.exit(0);
     });
   };
