@@ -9,7 +9,7 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
 
 // Constraints - currently are abitrary needs to be changed later
 const CACHE_KEY = 'coingecko:prices'; // Redis key where we store all prices
-const CACHE_TTL = 300; // Time to live: 5mins or 300 seconds
+const CACHE_TTL = 30; // Time to live: 5mins or 300 seconds
 const PAGE_SIZE = 250; // CoinGecko allows max 250 coins per request
 
 
@@ -34,7 +34,7 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
     // STEP 3: PAGINATION LOOP - Keep requesting until no more coins
     while (hasMore) {
         // Build the CoinGecko API URL
-        const url = new URL('https://api.coingecko.com/api/v3/coins/markets');
+        const url = new URL('https://pro-api.coingecko.com/api/v3/coins/markets');
 
         // Add query parameters
         url.searchParams.append('vs_currency', 'usd');  // Get prices in USD
