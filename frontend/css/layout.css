@@ -139,6 +139,13 @@ body {
   letter-spacing: 1px;
 }
 
+.update-timestamp {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-xs);
+  font-style: italic;
+}
+
 /* Grid Layouts */
 .market-grid {
   display: grid;
