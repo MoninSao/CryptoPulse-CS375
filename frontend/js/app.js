@@ -6,9 +6,11 @@
 class CryptoPulseApp {
   constructor() {
     this.prices = new Map(); // Cache for current prices
+    this.changes = new Map(); // Cache for 24h changes
     this.holdings = new Map(); // Cache for holdings
     this.trades = []; // Cache for trades
     this.isInitialized = false;
+    this.lastUpdateTime = null; // Track last update timestamp
   }
 
   /**
@@ -76,9 +78,11 @@ class CryptoPulseApp {
    */
   setupWebSocketListeners() {
     // Listen for price updates
-    priceWebSocket.on('prices', ({ prices, timestamp }) => {
-      console.log(' Price update received:', prices);
+    priceWebSocket.on('prices', ({ prices, changes, timestamp }) => {
+      console.log('💰 Price update received:', prices);
       this.prices = new Map(Object.entries(prices));
+      this.changes = new Map(Object.entries(changes || {}));
+      this.lastUpdateTime = timestamp;
       this.updatePriceDisplays();
     });
 
@@ -131,10 +135,12 @@ class CryptoPulseApp {
     try {
       this.showSpinner(true);
 
-      // Load current prices
+      // Load current prices with 24h changes
       const pricesData = await api.getPrices();
       if (pricesData) {
-        this.prices = new Map(Object.entries(pricesData));
+        this.prices = new Map(Object.entries(pricesData.prices || {}));
+        this.changes = new Map(Object.entries(pricesData.changes || {}));
+        this.lastUpdateTime = pricesData.timestamp;
       }
 
       // Load portfolio holdings
@@ -151,7 +157,7 @@ class CryptoPulseApp {
         this.trades = Array.isArray(trades) ? trades : [];
       }
 
-      console.log(' Initial data loaded');
+      console.log('✅ Initial data loaded');
     } catch (error) {
       console.error('Error loading initial data:', error);
     } finally {
@@ -173,18 +179,32 @@ class CryptoPulseApp {
       return;
     }
 
-    this.prices.forEach((price, coinId) => {
+    // Get top 10 coins by sorting and limiting
+    const sortedCoins = Array.from(this.prices.entries())
+      .slice(0, 10);
+
+    sortedCoins.forEach(([coinId, price]) => {
+      const change24h = this.changes.get(coinId) || 0;
+      const changeClass = change24h >= 0 ? 'positive' : 'negative';
+      const changeSymbol = change24h >= 0 ? '+' : '';
+      
       const card = document.createElement('div');
       card.className = 'market-card';
       card.innerHTML = `
         <div class="coin-header">
           <div>
             <div class="coin-name">${coinId.toUpperCase()}</div>
-            <div class="coin-symbol">${coinId}</div>
+            <div class="coin-symbol">${coinId.toLowerCase()}</div>
+          </div>
+          <div class="coin-change ${changeClass}">
+            ${changeSymbol}${change24h.toFixed(2)}%
           </div>
         </div>
-        <div class="coin-price">${CryptoPulseAPI.formatCurrency(price)}</div>
-        <button class="btn btn-primary btn-sm" data-coin="${coinId}">View</button>
+        <div class="coin-price">$${this.formatNumber(price)}</div>
+        <div class="coin-footer">
+          <span class="coin-label">24h Change</span>
+        </div>
+        <button class="btn btn-primary btn-sm" data-coin="${coinId}">Trade</button>
       `;
 
       card.querySelector('button').addEventListener('click', () => {
@@ -195,6 +215,31 @@ class CryptoPulseApp {
 
       container.appendChild(card);
     });
+
+    // Update timestamp display
+    this.updateTimestamp();
+  }
+
+  /**
+   * Update timestamp display
+   */
+  updateTimestamp() {
+    const timestampEl = document.getElementById('market-timestamp');
+    if (timestampEl && this.lastUpdateTime) {
+      const date = new Date(this.lastUpdateTime);
+      timestampEl.textContent = `Last updated: ${date.toLocaleTimeString()}`;
+    }
+  }
+
+  /**
+   * Format number with commas
+   */
+  formatNumber(num) {
+    if (num >= 1) {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    } else {
+      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+    }
   }
 
   /**

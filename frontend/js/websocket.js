@@ -87,7 +87,12 @@ class PriceWebSocket {
 
     switch (type) {
       case 'prices':
-        this.emit('prices', { prices: messageData, timestamp });
+        // messageData now contains { prices: {...}, changes: {...} }
+        this.emit('prices', { 
+          prices: messageData.prices, 
+          changes: messageData.changes,
+          timestamp 
+        });
         break;
       case 'price':
         this.emit('price', { coin: messageData.coin, price: messageData.price, timestamp });
