@@ -39,6 +39,7 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
         url.searchParams.append('per_page', PAGE_SIZE.toString()); // 250 coins per page
         url.searchParams.append('page', page.toString());     // Which page to fetch
         url.searchParams.append('sparkline', 'false');        // Don't need price history
+        url.searchParams.append('price_change_percentage', '24h'); // Get 24h price change %
 
         // Make the actual HTTP request
         const response = await fetch(url.toString());
@@ -66,6 +67,7 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
           price: coin.current_price,                // Rename current_price → price
           market_cap: coin.market_cap,              // Keep market cap
           market_cap_rank: coin.market_cap_rank,    // Keep rank
+          change_24h: coin.price_change_percentage_24h, // 24h change %
         }))
       );
 

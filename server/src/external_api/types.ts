@@ -8,6 +8,7 @@ export interface CoinGeckoMarket {
     current_price: number;
     market_cap: number | null;
     market_cap_rank: number | null;
+    price_change_percentage_24h: number | null; // 24h price change percentage
 }
 
 // This is the SHAPE of a single coin price response
@@ -17,4 +18,5 @@ export interface CoinPrice {
     price: number;
     market_cap: number | null;
     market_cap_rank: number | null;
+    change_24h: number | null; // 24h price change percentage
 }
