@@ -166,7 +166,7 @@
 .coin-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: var(--space-md);
 }
 
@@ -178,6 +178,25 @@
 .coin-symbol {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.coin-change {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  display: inline-block;
+}
+
+.coin-change.positive {
+  color: var(--color-success);
+  background-color: rgba(6, 214, 160, 0.15);
+}
+
+.coin-change.negative {
+  color: var(--color-danger);
+  background-color: rgba(247, 37, 133, 0.15);
 }
 
 .coin-price {
@@ -185,6 +204,17 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-primary);
   margin: var(--space-md) 0;
+}
+
+.coin-footer {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+}
+
+.coin-label {
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .price-change {
