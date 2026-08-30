@@ -78,3 +78,42 @@ export async function getAllCachedPrices(): Promise<Record<string, number>> {
     return {};
   }
 }
+
+/**
+ * Get ALL cached 24h price changes from Redis
+ * Returns: { BTC: 2.5, ETH: -1.3, SOL: 5.2, ... }
+ */
+export async function getAllCached24hChanges(): Promise<Record<string, number>> {
+  try {
+    const redis = getRedis();
+
+    // Find all Redis keys matching "change:*" pattern
+    const keys = await redis.keys('change:*');
+
+    if (keys.length === 0) {
+      console.warn('⚠️  No cached 24h changes found in Redis');
+      return {};
+    }
+
+    // Retrieve all values in one batch operation
+    const values = await redis.mget(...keys);
+
+    // Transform into map: { symbol → change% }
+    const changeMap: Record<string, number> = {};
+
+    keys.forEach((key, index) => {
+      const symbol = key.replace('change:', '');
+      const change = values[index];
+      if (change !== null && change !== undefined) {
+        changeMap[symbol] = parseFloat(change);
+      }
+    });
+
+    console.log(`✅ Retrieved ${Object.keys(changeMap).length} cached 24h changes from Redis`);
+    return changeMap;
+
+  } catch (error) {
+    console.error('❌ Error fetching cached 24h changes:', error);
+    return {};
+  }
+}

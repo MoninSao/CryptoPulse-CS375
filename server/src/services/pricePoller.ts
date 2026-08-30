@@ -1,5 +1,6 @@
 import { getAllCoinPrices } from '../external_api/coingecko';
 import { getRedis } from '../cache/redis';
+import { getAllCachedPrices, getAllCached24hChanges } from './priceService';
 
 // Store the interval ID so we can stop it later
 let pollingInterval: NodeJS.Timeout | null = null;
@@ -8,12 +9,19 @@ let pollingInterval: NodeJS.Timeout | null = null;
 let writtenCount = 0;
 let errorCount = 0;
 
+// Import broadcast function dynamically to avoid circular dependency
+let broadcastPrices: ((prices: Record<string, number>, changes: Record<string, number>) => void) | null = null;
+
 /**
  * Start the background price polling service
  * Fetches all coin prices every 5 seconds and stores them in Redis
  */
 export async function startPricePoller(): Promise<void> {
   console.log('🚀 Starting price poller...');
+
+  // Dynamically import broadcast function to avoid circular dependency
+  const serverModule = await import('../server');
+  broadcastPrices = serverModule.broadcastPrices;
 
   // Immediately fetch prices on startup (don't wait 5 seconds)
   await pollOnce();
@@ -43,14 +51,24 @@ async function pollOnce(): Promise<void> {
     for (const coin of prices) {
       try {
         // Create Redis key: "price:BTC", "price:ETH", etc.
-        const redisKey = `price:${coin.symbol}`;
+        const priceKey = `price:${coin.symbol}`;
+        const changeKey = `change:${coin.symbol}`;
 
         // Store the price with 10 second expiration
         await redis.setex(
-          redisKey,           // Key
+          priceKey,           // Key
           10,                 // TTL in seconds (expires after 10s)
           coin.price.toString() // Value (price as string for Redis)
         );
+
+        // Store the 24h change percentage (if available)
+        if (coin.change_24h !== null && coin.change_24h !== undefined) {
+          await redis.setex(
+            changeKey,
+            10,
+            coin.change_24h.toString()
+          );
+        }
 
         localWriteCount++;
       } catch (error) {
@@ -66,6 +84,13 @@ async function pollOnce(): Promise<void> {
       console.log(
         `📊 Polled ${localWriteCount} prices | Errors: ${errorCount} | Total cached: ${prices.length}`
       );
+    }
+
+    // STEP 4: Broadcast prices to WebSocket clients
+    if (broadcastPrices) {
+      const pricesMap = await getAllCachedPrices();
+      const changesMap = await getAllCached24hChanges();
+      broadcastPrices(pricesMap, changesMap);
     }
 
   } catch (error) {
