@@ -28,6 +28,29 @@ app.use((req, res, next) => {
   next();
 });
 
+/**
+ * Broadcast prices and 24h changes to all WebSocket clients
+ * Called by price poller to push real-time updates
+ */
+export function broadcastPrices(prices: Record<string, number>, changes: Record<string, number>): void {
+  if (wss.clients.size > 0) {
+    const message = JSON.stringify({
+      type: 'prices',
+      data: {
+        prices,
+        changes
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(message);
+      }
+    });
+  }
+}
+
 async function main() {
   // Check Supabase connection
   //temps delete soon
@@ -84,24 +107,6 @@ wss.on('connection', (ws) => {
     console.error('WebSocket error:', error);
   });
 });
-
-// Broadcast prices to all WebSocket clients
-// Called by price poller to push real-time updates
-export function broadcastPrices(prices: Record<string, number>) {
-  if (wss.clients.size > 0) {
-    const message = JSON.stringify({
-      type: 'prices',
-      data: prices,
-      timestamp: new Date().toISOString()
-    });
-    
-    wss.clients.forEach((client) => {
-      if (client.readyState === 1) { // WebSocket.OPEN
-        client.send(message);
-      }
-    });
-  }
-}
 
 // Start HTTP + WebSocket server
   const server = httpServer.listen(PORT, () => {

@@ -1,34 +1,37 @@
 import { Router } from 'express';
-import { getAllCachedPrices } from '../services/priceService';
+import { getAllCachedPrices, getAllCached24hChanges } from '../services/priceService';
 
 const router = Router();
 
 /**
  * GET /prices
- * Returns all cached coin prices from Redis with timestamp
+ * Returns all cached coin prices and 24h changes from Redis with timestamp
  *
  * Response format:
  * {
- *   "BTC": "95000.50",
- *   "ETH": "3000.25",
- *   "SOL": null,
+ *   "prices": {
+ *     "BTC": 95000.50,
+ *     "ETH": 3000.25,
+ *     "SOL": 150.00
+ *   },
+ *   "changes": {
+ *     "BTC": 2.5,
+ *     "ETH": -1.3,
+ *     "SOL": 5.2
+ *   },
  *   "timestamp": "2026-08-13T14:30:45.123Z"
  * }
  */
 router.get('/prices', async (req, res) => {
   try {
-    // Fetch all cached prices from Redis
+    // Fetch all cached prices and 24h changes from Redis
     const prices = await getAllCachedPrices();
-
-    // Convert numbers to strings (to match Redis storage format)
-    const pricesObject: Record<string, string | null> = {};
-    Object.entries(prices).forEach(([symbol, price]) => {
-      pricesObject[symbol] = price !== null ? price.toString() : null;
-    });
+    const changes = await getAllCached24hChanges();
 
     // Build response with timestamp
     const response = {
-      ...pricesObject,
+      prices,
+      changes,
       timestamp: new Date().toISOString(),
     };
 
