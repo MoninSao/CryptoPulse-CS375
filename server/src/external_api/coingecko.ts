@@ -3,10 +3,13 @@
 import { getRedis } from '../cache/redis';
 import { CoinPrice, CoinGeckoMarket } from './types';
 
+// CoinGecko Pro API Key from environment
+const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
+
 
 // Constraints - currently are abitrary needs to be changed later
 const CACHE_KEY = 'coingecko:prices'; // Redis key where we store all prices
-const CACHE_TTL = 300; // Time to live: 5mins or 300 seconds
+const CACHE_TTL = 30; // Time to live: 5mins or 300 seconds
 const PAGE_SIZE = 250; // CoinGecko allows max 250 coins per request
 
 
@@ -31,7 +34,7 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
     // STEP 3: PAGINATION LOOP - Keep requesting until no more coins
     while (hasMore) {
         // Build the CoinGecko API URL
-        const url = new URL('https://api.coingecko.com/api/v3/coins/markets');
+        const url = new URL('https://pro-api.coingecko.com/api/v3/coins/markets');
 
         // Add query parameters
         url.searchParams.append('vs_currency', 'usd');  // Get prices in USD
@@ -41,12 +44,25 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
         url.searchParams.append('sparkline', 'false');        // Don't need price history
         url.searchParams.append('price_change_percentage', '24h'); // Get 24h price change %
 
+        // Prepare headers with API key for Pro plan
+        const headers: HeadersInit = {};
+        if (COINGECKO_API_KEY) {
+          headers['x-cg-pro-api-key'] = COINGECKO_API_KEY;
+        }
+
         // Make the actual HTTP request
-        const response = await fetch(url.toString());
+        const response = await fetch(url.toString(), { headers });
 
         // Check if request failed
         if (!response.ok) {
-        throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
+          // Handle authentication errors specifically
+          if (response.status === 401 || response.status === 403) {
+            throw new Error(
+              `CoinGecko API authentication failed (${response.status}): ` +
+              `Invalid or missing API key. Check COINGECKO_API_KEY environment variable.`
+            );
+          }
+          throw new Error(`CoinGecko API error: ${response.status} ${response.statusText}`);
         }
 
         // Parse the JSON response
