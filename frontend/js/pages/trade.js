@@ -98,9 +98,12 @@ class TradePage {
       return;
     }
 
-    // Filter coins based on search term
+    // Filter coins based on search term (matches symbol or full name)
     const filteredCoins = Array.from(this.app.prices.entries())
-      .filter(([coinId]) => coinId.toLowerCase().includes(searchTerm))
+      .filter(([coinId]) => {
+        const coinName = this.app.meta?.get(coinId)?.name || '';
+        return coinId.toLowerCase().includes(searchTerm) || coinName.toLowerCase().includes(searchTerm);
+      })
       .slice(0, 10); // Limit to 10 results
 
     if (filteredCoins.length === 0) {
