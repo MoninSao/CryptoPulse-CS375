@@ -447,7 +447,7 @@ class TradePage {
         return `
           <div class="alert-card" data-alert-id="${alert.id}">
             <div class="alert-card-info">
-              <span class="detail-label">Buy ${CryptoPulseAPI.formatNumber(parseFloat(alert.quantity))} ${alert.symbol}</span>
+              <span class="detail-label">Buy ${parseFloat(alert.quantity).toFixed(6)} ${alert.symbol}</span>
               <span class="detail-label">at or below ${CryptoPulseAPI.formatCurrency(targetPrice)}</span>
               <span class="detail-label">${distancePct}% above target</span>
             </div>
