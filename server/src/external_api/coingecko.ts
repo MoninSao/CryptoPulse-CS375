@@ -9,7 +9,7 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
 
 // Constraints - currently are abitrary needs to be changed later
 const CACHE_KEY = 'coingecko:prices'; // Redis key where we store all prices
-const CACHE_TTL = 30; // Time to live: 30seconds
+const CACHE_TTL = 300; // Time to live: 300 seconds (5 minutes)
 const PAGE_SIZE = 250; // CoinGecko allows max 250 coins per request
 
 // Paginating the full coin catalog (~16k coins / 66 requests) can take
