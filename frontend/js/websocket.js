@@ -226,14 +226,6 @@ class PriceWebSocket {
 // Export WebSocket instance
 const priceWebSocket = new PriceWebSocket();
 
-// Auto-connect on script load
-document.addEventListener('DOMContentLoaded', () => {
-  priceWebSocket.connect().catch(error => {
-    console.error('Initial WebSocket connection failed:', error);
-    // Will automatically retry via attemptReconnect
-  });
-});
-
 // Cleanup on page unload
 window.addEventListener('beforeunload', () => {
   priceWebSocket.disconnect();
