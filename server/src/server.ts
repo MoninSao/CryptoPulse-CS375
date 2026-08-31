@@ -8,6 +8,7 @@ import { startPricePoller, stopPricePoller } from "./services/pricePoller";
 import pricesRouter from "./routes/prices";
 import tradingRouter from "./routes/trading";
 import portfolioRouter from "./routes/portfolio";
+import alertsRouter from "./routes/alerts";
 import { CoinMeta } from "./external_api/types";
 
 const app = express();
@@ -70,6 +71,34 @@ export function broadcastPrices(prices: Record<string, number>, changes: Record<
   }
 }
 
+/**
+ * Broadcast the outcome of an auto-triggered buy-limit order to all
+ * WebSocket clients. Called by the price poller after checkAndExecuteAlerts().
+ */
+export function broadcastAlertExecuted(alert: {
+  alertId: string;
+  symbol: string;
+  quantity: string;
+  price: number;
+  status: 'executed' | 'failed';
+  tradeId?: string;
+  error?: string;
+}): void {
+  if (wss.clients.size > 0) {
+    const message = JSON.stringify({
+      type: 'alert_executed',
+      data: alert,
+      timestamp: new Date().toISOString(),
+    });
+
+    wss.clients.forEach((client) => {
+      if (client.readyState === 1) { // WebSocket.OPEN
+        client.send(message);
+      }
+    });
+  }
+}
+
 async function main() {
   // Check Supabase connection
   //temps delete soon
@@ -122,6 +151,7 @@ try {
 app.use('/api', pricesRouter);
 app.use('/api/trades', tradingRouter);
 app.use('/api/portfolio', portfolioRouter);
+app.use('/api/alerts', alertsRouter);
 
 // Health check endpoint
 app.get('/health', (req, res) => {

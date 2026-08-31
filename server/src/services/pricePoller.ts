@@ -1,6 +1,7 @@
 import { getAllCoinPrices } from '../external_api/coingecko';
 import { getRedis } from '../cache/redis';
 import { getAllCachedPrices, getAllCached24hChanges, getAllCachedMeta } from './priceService';
+import { checkAndExecuteAlerts, AlertExecutionResult } from './alertService';
 import { CoinMeta } from '../external_api/types';
 
 // How long price/change keys live in Redis. The full CoinGecko catalog
@@ -26,6 +27,7 @@ let errorCount = 0;
 
 // Import broadcast function dynamically to avoid circular dependency
 let broadcastPrices: ((prices: Record<string, number>, changes: Record<string, number>, meta: Record<string, CoinMeta>) => void) | null = null;
+let broadcastAlertExecuted: ((alert: AlertExecutionResult) => void) | null = null;
 
 /**
  * Start the background price polling service
@@ -37,6 +39,7 @@ export async function startPricePoller(): Promise<void> {
   // Dynamically import broadcast function to avoid circular dependency
   const serverModule = await import('../server');
   broadcastPrices = serverModule.broadcastPrices;
+  broadcastAlertExecuted = serverModule.broadcastAlertExecuted;
 
   // Immediately fetch prices on startup (don't wait 5 seconds)
   await pollOnce();
@@ -77,6 +80,13 @@ async function pollOnce(): Promise<void> {
       }
     }
     const prices = Array.from(bestBySymbol.values());
+
+    // Plain symbol -> price map for this cycle, reused below to check
+    // pending buy-limit alerts without an extra Redis round-trip.
+    const priceMap: Record<string, number> = {};
+    for (const coin of prices) {
+      priceMap[coin.symbol] = coin.price;
+    }
 
     // STEP 2: Write all prices to Redis in a single pipelined round-trip.
     // With thousands of coins, awaiting each SETEX individually took longer
@@ -150,12 +160,32 @@ async function pollOnce(): Promise<void> {
       );
     }
 
+    // STEP 3b: Check pending buy-limit alerts against this cycle's prices
+    // and auto-execute any that have hit their target. Wrapped so a bug
+    // here can never take down price polling, which is this loop's real
+    // job - checkAndExecuteAlerts() also guards each alert individually.
+    let alertResults: AlertExecutionResult[] = [];
+    try {
+      alertResults = await checkAndExecuteAlerts(priceMap);
+    } catch (error) {
+      console.error(
+        '❌ Alert check cycle failed:',
+        error instanceof Error ? error.message : 'Unknown error'
+      );
+    }
+
     // STEP 4: Broadcast prices to WebSocket clients
     if (broadcastPrices) {
       const pricesMap = await getAllCachedPrices();
       const changesMap = await getAllCached24hChanges();
       const metaMap = await getAllCachedMeta();
       broadcastPrices(pricesMap, changesMap, metaMap);
+    }
+
+    if (broadcastAlertExecuted) {
+      for (const result of alertResults) {
+        broadcastAlertExecuted(result);
+      }
     }
 
   } catch (error) {
