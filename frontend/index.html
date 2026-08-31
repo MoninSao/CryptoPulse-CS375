@@ -180,6 +180,49 @@
             <p class="placeholder-text">Transaction details will appear here after a trade</p>
           </div>
         </div>
+
+        <!-- Buy Limit Order (Price Alert) Section -->
+        <div class="alert-section">
+          <h3 class="form-section-title">⏰ Buy Limit Order</h3>
+          <p class="subtitle">Automatically buy this coin when its price drops to your target</p>
+
+          <form id="alert-form" class="trade-form">
+            <div class="form-group">
+              <label for="alert-target-price">Target Price (USD)</label>
+              <input
+                type="number"
+                id="alert-target-price"
+                class="form-control"
+                placeholder="Enter target price"
+                step="any"
+                min="0"
+                required
+              />
+              <small class="input-hint">Buy automatically when the price drops to or below this</small>
+            </div>
+
+            <div class="form-group">
+              <label for="alert-quantity">Quantity</label>
+              <input
+                type="number"
+                id="alert-quantity"
+                class="form-control"
+                placeholder="Enter quantity"
+                step="any"
+                min="0"
+                required
+              />
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block" disabled>
+              Create Alert
+            </button>
+          </form>
+
+          <div id="alert-list" class="alert-list">
+            <p class="placeholder-text">No active alerts</p>
+          </div>
+        </div>
       </section>
 
       <!-- Page: Portfolio -->
