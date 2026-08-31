@@ -55,15 +55,29 @@ async function main() {
   // Check Supabase connection
   //temps delete soon
   try {
+    console.log("Testing Supabase connection...");
+    console.log("SUPABASE_URL:", process.env.SUPABASE_URL ? "✓ Set" : "✗ Missing");
+    console.log("SUPABASE_SERVICE_ROLE_KEY:", process.env.SUPABASE_SERVICE_ROLE_KEY ? "✓ Set" : "✗ Missing");
+    
     const { error } = await supabase.from("profiles").select("*").limit(1);
     if (error && error.code !== "42P01") {
       console.error("Supabase connection failed:", error.message);
+      console.error("Error code:", error.code);
+      console.error("Full error:", error);
       console.warn("Continuing anyway for testing...");
     } else {
       console.log("Supabase connected ✓");
     }
   } catch (supabaseErr) {
-    console.warn("Supabase connection error (non-blocking):", (supabaseErr as Error).message);
+    console.error("Supabase connection error (non-blocking):");
+    console.error("Error:", (supabaseErr as Error).message);
+    console.error("Stack:", (supabaseErr as Error).stack);
+    if (supabaseErr instanceof TypeError) {
+      console.error("This is a network/fetch error. Possible causes:");
+      console.error("  - Network connectivity to Supabase");
+      console.error("  - Invalid/expired credentials");
+      console.error("  - Firewall/proxy blocking the connection");
+    }
   }
 
 
