@@ -98,13 +98,21 @@ class TradePage {
       return;
     }
 
-    // Filter coins based on search term (matches symbol or full name)
+    // Filter coins based on search term (matches symbol or full name).
+    // No result cap here - a substring match like "btc" hits every wrapped/
+    // leveraged token too (WBTC, BTCB, BTCUP, ...), and Redis key order isn't
+    // rank-sorted, so a hard slice could cut the real coin out entirely.
+    // Sort by market cap rank instead so the coin you're looking for is first.
     const filteredCoins = Array.from(this.app.prices.entries())
       .filter(([coinId]) => {
         const coinName = this.app.meta?.get(coinId)?.name || '';
         return coinId.toLowerCase().includes(searchTerm) || coinName.toLowerCase().includes(searchTerm);
       })
-      .slice(0, 10); // Limit to 10 results
+      .sort(([coinIdA], [coinIdB]) => {
+        const rankA = this.app.meta?.get(coinIdA)?.market_cap_rank ?? Infinity;
+        const rankB = this.app.meta?.get(coinIdB)?.market_cap_rank ?? Infinity;
+        return rankA - rankB;
+      });
 
     if (filteredCoins.length === 0) {
       dropdown.innerHTML = '<div class="dropdown-item disabled">No coins found</div>';
