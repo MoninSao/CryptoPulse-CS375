@@ -113,14 +113,19 @@ class TradePage {
       const change24h = this.app.changes.get(coinId) || 0;
       const changeClass = change24h >= 0 ? 'positive' : 'negative';
       const changeSymbol = change24h >= 0 ? '+' : '';
+      const meta = this.app.meta?.get(coinId);
+      const coinName = meta?.name || coinId.toUpperCase();
 
       const item = document.createElement('div');
       item.className = 'dropdown-item';
       item.dataset.coin = coinId;
       item.innerHTML = `
         <div class="dropdown-item-info">
-          <span class="dropdown-item-name">${coinId.toUpperCase()}</span>
-          <span class="dropdown-item-price">${CryptoPulseAPI.formatCurrency(price)}</span>
+          ${meta?.image ? `<img class="coin-logo coin-logo-sm" src="${meta.image}" alt="${coinName}" onerror="this.remove()">` : ''}
+          <div class="dropdown-item-text">
+            <span class="dropdown-item-name">${coinName}</span>
+            <span class="dropdown-item-price">${CryptoPulseAPI.formatCurrency(price)}</span>
+          </div>
         </div>
         <span class="dropdown-item-change ${changeClass}">
           ${changeSymbol}${change24h.toFixed(2)}%
@@ -206,7 +211,8 @@ class TradePage {
     priceDisplay.textContent = CryptoPulseAPI.formatCurrency(this.currentPrice);
 
     if (nameDisplay) {
-      nameDisplay.textContent = this.selectedCoin.toUpperCase();
+      const meta = this.app.meta?.get(this.selectedCoin);
+      nameDisplay.textContent = meta?.name || this.selectedCoin.toUpperCase();
     }
 
     const changeClass = this.change24h >= 0 ? 'positive' : 'negative';
