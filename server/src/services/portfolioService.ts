@@ -36,44 +36,55 @@ export async function calculatePortfolioWithPnL(
   // STEP 1: Fetch all active holdings
   const holdings = await getAllHoldings();
 
-  // STEP 2: Calculate P&L for each holding
+  // STEP 2: Calculate P&L for each holding (in parallel — each does its own
+  // Supabase round-trip for realized P&L, so serializing them here would add
+  // one full network round-trip of latency per holding)
   const positions: PortfolioPosition[] = [];
   let totalUnrealizedPnL = 0;
   let totalRealizedPnL = 0;
   let totalPortfolioValue = 0;
 
-  for (const holding of holdings) {
-    const symbol = holding.symbol.toUpperCase();
-    const quantity = parseFloat(holding.quantity);
-    const avgCostBasis = parseFloat(holding.avg_cost_basis);
-    const currentPrice = livePrices[symbol] || 0;
+  const results = await Promise.all(
+    holdings.map(async (holding) => {
+      const symbol = holding.symbol.toUpperCase();
+      const quantity = parseFloat(holding.quantity);
+      const avgCostBasis = parseFloat(holding.avg_cost_basis);
+      const currentPrice = livePrices[symbol] || 0;
 
-    // Calculate unrealized P&L
-    // Unrealized P&L = (current_price - avg_cost_basis) × current_qty
-    const unrealizedPnL = (currentPrice - avgCostBasis) * quantity;
+      // Calculate unrealized P&L
+      // Unrealized P&L = (current_price - avg_cost_basis) × current_qty
+      const unrealizedPnL = (currentPrice - avgCostBasis) * quantity;
 
-    // Calculate realized P&L from historical trades
-    const realizedPnL = await calculateRealizedPnL(symbol, avgCostBasis);
+      // Calculate realized P&L from historical trades
+      const realizedPnL = await calculateRealizedPnL(symbol, avgCostBasis);
 
-    // Calculate totals
-    const totalPnL = unrealizedPnL + realizedPnL;
-    const totalValue = currentPrice * quantity;
+      // Calculate totals
+      const totalPnL = unrealizedPnL + realizedPnL;
+      const totalValue = currentPrice * quantity;
 
-    positions.push({
-      symbol,
-      quantity: holding.quantity,
-      avg_cost_basis: holding.avg_cost_basis,
-      current_price: currentPrice.toString(),
-      unrealized_pnl: unrealizedPnL.toString(),
-      realized_pnl: realizedPnL.toString(),
-      total_pnl: totalPnL.toString(),
-      total_value: totalValue.toString(),
-    });
+      return {
+        position: {
+          symbol,
+          quantity: holding.quantity,
+          avg_cost_basis: holding.avg_cost_basis,
+          current_price: currentPrice.toString(),
+          unrealized_pnl: unrealizedPnL.toString(),
+          realized_pnl: realizedPnL.toString(),
+          total_pnl: totalPnL.toString(),
+          total_value: totalValue.toString(),
+        },
+        unrealizedPnL,
+        realizedPnL,
+        totalValue,
+      };
+    }),
+  );
 
-    // Accumulate totals
-    totalUnrealizedPnL += unrealizedPnL;
-    totalRealizedPnL += realizedPnL;
-    totalPortfolioValue += totalValue;
+  for (const result of results) {
+    positions.push(result.position);
+    totalUnrealizedPnL += result.unrealizedPnL;
+    totalRealizedPnL += result.realizedPnL;
+    totalPortfolioValue += result.totalValue;
   }
 
   const totalPnL = totalUnrealizedPnL + totalRealizedPnL;
