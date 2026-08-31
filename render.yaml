@@ -24,7 +24,7 @@ services:
       - key: COINGECKO_API_KEY
         sync: false
       - key: CORS_ORIGIN
-        sync: false
+        value: https://crypto-pulse-cs-375.vercel.app
 
   - type: redis
     name: cryptopulse-redis
