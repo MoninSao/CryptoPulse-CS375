@@ -12,12 +12,32 @@ const CACHE_KEY = 'coingecko:prices'; // Redis key where we store all prices
 const CACHE_TTL = 30; // Time to live: 30seconds
 const PAGE_SIZE = 250; // CoinGecko allows max 250 coins per request
 
+// Paginating the full coin catalog (~16k coins / 66 requests) can take
+// 30-40+ seconds - longer than CACHE_TTL and much longer than the 5s poll
+// interval. Without this, every poll tick that lands during a cold cache
+// kicked off its own full pagination sweep in parallel (a cache stampede),
+// starving Redis of price writes for the entire time all of them were in
+// flight. Concurrent callers now await the same in-flight fetch instead.
+let inFlightFetch: Promise<CoinPrice[]> | null = null;
 
 export async function getAllCoinPrices(): Promise<CoinPrice[]> {
+  if (inFlightFetch) {
+    return inFlightFetch;
+  }
+
+  inFlightFetch = fetchAllCoinPrices();
+  try {
+    return await inFlightFetch;
+  } finally {
+    inFlightFetch = null;
+  }
+}
+
+async function fetchAllCoinPrices(): Promise<CoinPrice[]> {
   try {
     // STEP 1: Check if data is already cached in Redis
     const cached = await getRedis().get(CACHE_KEY);
-    
+
     // If cache HIT, return immediately (no API call needed!)
     if (cached) {
       console.log('✅ Cache HIT: Returning cached coin prices');
@@ -26,7 +46,7 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
 
     // STEP 2: Cache MISS - Fetch fresh data from CoinGecko API
     console.log('🌐 Cache MISS: Fetching fresh coin prices from CoinGecko...');
-    
+
     const allCoins: CoinPrice[] = [];  // Array to collect all coins
     let page = 1;                       // Start at page 1
     let hasMore = true;                 // Assume there are more pages
