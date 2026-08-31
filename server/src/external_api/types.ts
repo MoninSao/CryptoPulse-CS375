@@ -5,6 +5,8 @@
 export interface CoinGeckoMarket {
     id: string;
     symbol: string;
+    name: string;
+    image: string;
     current_price: number;
     market_cap: number | null;
     market_cap_rank: number | null;
@@ -15,8 +17,17 @@ export interface CoinGeckoMarket {
 export interface CoinPrice {
     id: string;
     symbol: string;
+    name: string;
+    image: string;
     price: number;
     market_cap: number | null;
     market_cap_rank: number | null;
     change_24h: number | null; // 24h price change percentage
+}
+
+// Metadata (name/logo) for a coin, cached separately from its price
+export interface CoinMeta {
+    name: string;
+    image: string;
+    market_cap_rank: number | null;
 }

@@ -9,7 +9,7 @@ const COINGECKO_API_KEY = process.env.COINGECKO_API_KEY || '';
 
 // Constraints - currently are abitrary needs to be changed later
 const CACHE_KEY = 'coingecko:prices'; // Redis key where we store all prices
-const CACHE_TTL = 30; // Time to live: 5mins or 300 seconds
+const CACHE_TTL = 30; // Time to live: 30seconds
 const PAGE_SIZE = 250; // CoinGecko allows max 250 coins per request
 
 
@@ -80,6 +80,8 @@ export async function getAllCoinPrices(): Promise<CoinPrice[]> {
         ...data.map((coin) => ({
           id: coin.id,                              // Keep the ID
           symbol: coin.symbol.toUpperCase(),        // Convert "btc" → "BTC"
+          name: coin.name,                          // Display name, e.g. "Bitcoin"
+          image: coin.image,                        // Logo URL
           price: coin.current_price,                // Rename current_price → price
           market_cap: coin.market_cap,              // Keep market cap
           market_cap_rank: coin.market_cap_rank,    // Keep rank
