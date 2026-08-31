@@ -120,6 +120,20 @@ export async function getAllCached24hChanges(): Promise<Record<string, number>> 
 }
 
 /**
+ * Get cached display metadata for a single coin symbol
+ */
+export async function getMetaForSymbol(symbol: string): Promise<CoinMeta | null> {
+  try {
+    const redis = getRedis();
+    const cached = await redis.get(`meta:${symbol.toUpperCase()}`);
+    return cached ? (JSON.parse(cached) as CoinMeta) : null;
+  } catch (error) {
+    console.error(`❌ Error fetching metadata for ${symbol}:`, error);
+    return null;
+  }
+}
+
+/**
  * Get ALL cached coin display metadata (name/logo) from Redis
  * Returns: { BTC: { name: "Bitcoin", image: "...", market_cap_rank: 1 }, ... }
  */

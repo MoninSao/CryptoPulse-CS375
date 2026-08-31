@@ -1,6 +1,6 @@
-import { supabase } from '../supabase';
 import { insertTrade } from '../db/queries/tradeQueries';
 import { getHoldingBySymbol, updateHolding, Holding } from '../db/queries/holdingQueries';
+import { ensureCoinExists } from '../db/queries/coinQueries';
 
 export interface TradeResult {
   trade: {
@@ -19,7 +19,7 @@ export interface TradeResult {
  * Execute a trade (buy or sell) with atomic updates to holdings
  * 
  * Flow:
- * 1. Validate coin exists and is active
+ * 1. Ensure the coin is registered (trades.symbol has a FK to coins.symbol)
  * 2. For sell: validate current quantity >= sell quantity (prevent oversell)
  * 3. Calculate new holdings (quantity and avg_cost_basis)
  * 4. Insert trade record
@@ -43,20 +43,8 @@ export async function executeTrade(
     throw new Error('Unit price must be greater than 0');
   }
 
-  // STEP 1: Validate coin exists and is active
-  const { data: coinData, error: coinError } = await supabase
-    .from('coins')
-    .select('symbol, is_active')
-    .eq('symbol', upperSymbol)
-    .single();
-
-  if (coinError || !coinData) {
-    throw new Error(`Coin ${symbol} not found`);
-  }
-
-  if (!coinData.is_active) {
-    throw new Error(`Coin ${symbol} is not active and cannot be traded`);
-  }
+  // STEP 1: Ensure the coin is registered before we try to insert a trade for it
+  await ensureCoinExists(upperSymbol);
 
   // STEP 2: Get current holding
   const currentHolding = await getHoldingBySymbol(upperSymbol);
