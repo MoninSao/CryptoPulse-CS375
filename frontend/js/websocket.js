@@ -103,6 +103,9 @@ class PriceWebSocket {
       case 'price':
         this.emit('price', { coin: messageData.coin, price: messageData.price, timestamp });
         break;
+      case 'alert_executed':
+        this.emit('alert_executed', { alert: messageData, timestamp });
+        break;
       case 'connected':
         console.log('Server acknowledged connection');
         break;

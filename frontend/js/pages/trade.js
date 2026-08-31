@@ -11,6 +11,8 @@ class TradePage {
     this.change24h = null;
     this.userHoldings = new Map();
     this.isProcessing = false;
+    this.alerts = [];
+    this.isAlertProcessing = false;
   }
 
   /**
@@ -19,6 +21,7 @@ class TradePage {
   async init() {
     this.setupEventListeners();
     await this.loadUserHoldings();
+    await this.loadAlerts();
   }
 
   /**
@@ -64,6 +67,27 @@ class TradePage {
     const sellMaxBtn = document.getElementById('sell-max-btn');
     if (sellMaxBtn) {
       sellMaxBtn.addEventListener('click', () => this.setSellMaxQuantity());
+    }
+
+    // Buy limit order (price alert) form
+    const alertForm = document.getElementById('alert-form');
+    if (alertForm) {
+      alertForm.addEventListener('submit', (e) => this.handleAlertSubmit(e));
+    }
+
+    const alertTargetPriceInput = document.getElementById('alert-target-price');
+    if (alertTargetPriceInput) {
+      alertTargetPriceInput.addEventListener('input', () => this.updateAlertFormState());
+    }
+
+    const alertQuantityInput = document.getElementById('alert-quantity');
+    if (alertQuantityInput) {
+      alertQuantityInput.addEventListener('input', () => this.updateAlertFormState());
+    }
+
+    const alertList = document.getElementById('alert-list');
+    if (alertList) {
+      alertList.addEventListener('click', (e) => this.handleAlertListClick(e));
     }
   }
 
@@ -181,6 +205,8 @@ class TradePage {
     this.resetForms();
     this.updateBuySummary();
     this.updateSellSummary();
+    this.renderAlertList();
+    this.updateAlertFormState();
 
     // Hide dropdown
     const dropdown = document.getElementById('coin-dropdown');
@@ -336,6 +362,7 @@ class TradePage {
   resetForms() {
     const buyForm = document.getElementById('buy-form');
     const sellForm = document.getElementById('sell-form');
+    const alertForm = document.getElementById('alert-form');
 
     if (buyForm) {
       buyForm.reset();
@@ -345,6 +372,183 @@ class TradePage {
     if (sellForm) {
       sellForm.reset();
       document.getElementById('sell-total-proceeds').textContent = '$0.00';
+    }
+
+    if (alertForm) {
+      alertForm.reset();
+    }
+  }
+
+  /**
+   * Load all price alerts from the backend
+   */
+  async loadAlerts() {
+    try {
+      const response = await api.request('/alerts');
+      this.alerts = (response && response.alerts) || [];
+    } catch (error) {
+      console.error('Failed to load alerts:', error);
+      this.alerts = [];
+    }
+    this.renderAlertList();
+  }
+
+  /**
+   * Enable/disable the alert form's submit button based on current input validity
+   */
+  updateAlertFormState() {
+    const alertForm = document.getElementById('alert-form');
+    const submitBtn = alertForm?.querySelector('button[type="submit"]');
+    if (!submitBtn) return;
+
+    const targetPrice = parseFloat(document.getElementById('alert-target-price')?.value);
+    const quantity = parseFloat(document.getElementById('alert-quantity')?.value);
+
+    const valid =
+      this.selectedCoin &&
+      this.currentPrice &&
+      quantity > 0 &&
+      targetPrice > 0 &&
+      targetPrice < this.currentPrice;
+
+    submitBtn.disabled = !valid;
+  }
+
+  /**
+   * Render the list of pending alerts for the currently selected coin.
+   * Recomputed from cached data on every price tick, so it needs no
+   * network call to keep "distance to target" live.
+   */
+  renderAlertList() {
+    const alertList = document.getElementById('alert-list');
+    if (!alertList) return;
+
+    if (!this.selectedCoin) {
+      alertList.innerHTML = '<p class="placeholder-text">Select a coin to see its buy limit orders</p>';
+      return;
+    }
+
+    const pendingAlerts = this.alerts.filter(
+      (alert) => alert.status === 'pending' && alert.symbol === this.selectedCoin.toUpperCase()
+    );
+
+    if (pendingAlerts.length === 0) {
+      alertList.innerHTML = '<p class="placeholder-text">No active alerts</p>';
+      return;
+    }
+
+    alertList.innerHTML = pendingAlerts
+      .map((alert) => {
+        const targetPrice = parseFloat(alert.target_price);
+        const distancePct = this.currentPrice
+          ? (((this.currentPrice - targetPrice) / this.currentPrice) * 100).toFixed(2)
+          : '-';
+
+        return `
+          <div class="alert-card" data-alert-id="${alert.id}">
+            <div class="alert-card-info">
+              <span class="detail-label">Buy ${parseFloat(alert.quantity).toFixed(6)} ${alert.symbol}</span>
+              <span class="detail-label">at or below ${CryptoPulseAPI.formatCurrency(targetPrice)}</span>
+              <span class="detail-label">${distancePct}% above target</span>
+            </div>
+            <button type="button" class="btn btn-sm btn-danger alert-cancel-btn" data-alert-id="${alert.id}">Cancel</button>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  /**
+   * Handle clicks within the alert list (event delegation for Cancel buttons)
+   */
+  handleAlertListClick(event) {
+    const cancelBtn = event.target.closest('.alert-cancel-btn');
+    if (!cancelBtn) return;
+
+    const alertId = cancelBtn.dataset.alertId;
+    if (alertId) {
+      this.handleCancelAlert(alertId);
+    }
+  }
+
+  /**
+   * Handle buy limit order (price alert) form submission
+   */
+  async handleAlertSubmit(event) {
+    event.preventDefault();
+
+    if (!this.selectedCoin || !this.currentPrice) {
+      this.app.showToast('Please select a coin first', 'error');
+      return;
+    }
+
+    const targetPrice = parseFloat(document.getElementById('alert-target-price').value);
+    const quantity = parseFloat(document.getElementById('alert-quantity').value);
+
+    if (!quantity || quantity <= 0 || !Number.isFinite(quantity)) {
+      this.app.showToast('Please enter a valid quantity', 'error');
+      return;
+    }
+
+    if (!targetPrice || targetPrice <= 0 || !Number.isFinite(targetPrice)) {
+      this.app.showToast('Please enter a valid target price', 'error');
+      return;
+    }
+
+    if (targetPrice >= this.currentPrice) {
+      this.app.showToast('Target price must be below the current price', 'error');
+      return;
+    }
+
+    if (this.isAlertProcessing) {
+      return;
+    }
+
+    this.isAlertProcessing = true;
+
+    try {
+      this.app.showSpinner(true);
+
+      await api.request('/alerts', {
+        method: 'POST',
+        body: {
+          symbol: this.selectedCoin,
+          target_price: targetPrice,
+          quantity: quantity
+        }
+      });
+
+      await this.loadAlerts();
+
+      this.app.showToast(
+        `⏰ Buy limit order created: ${quantity} ${this.selectedCoin.toUpperCase()} at ${CryptoPulseAPI.formatCurrency(targetPrice)}`,
+        'success'
+      );
+
+      document.getElementById('alert-form').reset();
+      this.updateAlertFormState();
+    } catch (error) {
+      console.error('Create alert error:', error);
+      const errorMsg = error.message || 'Failed to create alert';
+      this.app.showToast(`❌ ${errorMsg}`, 'error');
+    } finally {
+      this.isAlertProcessing = false;
+      this.app.showSpinner(false);
+    }
+  }
+
+  /**
+   * Cancel a pending alert
+   */
+  async handleCancelAlert(alertId) {
+    try {
+      await api.request(`/alerts/${alertId}/cancel`, { method: 'POST' });
+      await this.loadAlerts();
+      this.app.showToast('Buy limit order cancelled', 'success');
+    } catch (error) {
+      console.error('Cancel alert error:', error);
+      const errorMsg = error.message || 'Failed to cancel alert';
+      this.app.showToast(`❌ ${errorMsg}`, 'error');
     }
   }
 

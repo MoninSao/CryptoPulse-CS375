@@ -128,6 +128,34 @@ class CryptoPulseApp {
     priceWebSocket.on('error', ({ error }) => {
       console.error('❌ WebSocket error:', error);
     });
+
+    // A buy limit order was auto-triggered (or failed) by the backend poller
+    priceWebSocket.on('alert_executed', async ({ alert }) => {
+      console.log('⏰ Alert executed event received:', alert);
+
+      this.showToast(
+        alert.status === 'executed'
+          ? `✅ Buy limit order executed: ${alert.quantity} ${alert.symbol} @ ${CryptoPulseAPI.formatCurrency(alert.price)}`
+          : `❌ Buy limit order failed for ${alert.symbol}: ${alert.error}`,
+        alert.status === 'executed' ? 'success' : 'error'
+      );
+
+      if (this.tradePage) {
+        await this.tradePage.loadAlerts();
+      }
+
+      if (alert.status === 'executed') {
+        // A poller-triggered buy never goes through TradePage's local
+        // holdings mutation, so pull fresh holdings from the backend.
+        await this.loadInitialData();
+
+        if (this.tradePage) {
+          await this.tradePage.loadUserHoldings();
+          this.tradePage.updateSellMaxQuantity();
+          this.tradePage.updateSellSummary();
+        }
+      }
+    });
   }
 
   /**
@@ -333,6 +361,8 @@ class CryptoPulseApp {
       this.tradePage.updatePriceDisplay();
       this.tradePage.updateBuySummary();
       this.tradePage.updateSellSummary();
+      this.tradePage.renderAlertList();
+      this.tradePage.updateAlertFormState();
     }
   }
 
