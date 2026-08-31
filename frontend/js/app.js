@@ -11,6 +11,7 @@ class CryptoPulseApp {
     this.trades = []; // Cache for trades
     this.isInitialized = false;
     this.lastUpdateTime = null; // Track last update timestamp
+    this.tradePage = null; // Trade page component instance
   }
 
   /**
@@ -129,12 +130,6 @@ class CryptoPulseApp {
    * Setup event listeners
    */
   setupEventListeners() {
-    // Trade form submission
-    const tradeForm = document.getElementById('trade-form');
-    if (tradeForm) {
-      tradeForm.addEventListener('submit', (e) => this.handleTradeSubmit(e));
-    }
-
     // History filter
     const historyFilter = document.getElementById('history-filter');
     if (historyFilter) {
@@ -143,11 +138,7 @@ class CryptoPulseApp {
       });
     }
 
-    // Coin select change
-    const coinSelect = document.getElementById('coin-select');
-    if (coinSelect) {
-      coinSelect.addEventListener('change', (e) => this.updateCurrentPrice(e.target.value));
-    }
+    // Note: Trade form listeners are now handled by TradePage component
   }
 
   /**
@@ -230,9 +221,13 @@ class CryptoPulseApp {
       `;
 
       card.querySelector('button').addEventListener('click', () => {
-        document.getElementById('coin-select').value = coinId;
-        this.updateCurrentPrice(coinId);
-        router.navigateTo('trade');
+        // Navigate to trade page
+        router.navigateTo('trade').then(() => {
+          // Auto-select the coin in the trade page
+          if (this.tradePage) {
+            this.tradePage.selectCoin(coinId);
+          }
+        });
       });
 
       container.appendChild(card);
@@ -326,21 +321,13 @@ class CryptoPulseApp {
    * Render trade page
    */
   async renderTradePage() {
-    const coinSelect = document.getElementById('coin-select');
-    if (coinSelect && this.prices.size > 0) {
-      const currentValue = coinSelect.value;
-      const options = ['<option value="">Select a coin...</option>'];
-
-      this.prices.forEach((price, coinId) => {
-        options.push(`<option value="${coinId}" ${coinId === currentValue ? 'selected' : ''}>${coinId.toUpperCase()}</option>`);
-      });
-
-      coinSelect.innerHTML = options.join('');
+    // Initialize trade page component if not already done
+    if (!this.tradePage) {
+      this.tradePage = new TradePage(this);
     }
 
-    if (coinSelect && coinSelect.value) {
-      this.updateCurrentPrice(coinSelect.value);
-    }
+    // Render the trade page component
+    await this.tradePage.render();
   }
 
   /**
@@ -403,10 +390,11 @@ class CryptoPulseApp {
       this.renderPortfolioPage();
     }
 
-    // Update current price in trade form
-    const coinSelect = document.getElementById('coin-select');
-    if (coinSelect && coinSelect.value) {
-      this.updateCurrentPrice(coinSelect.value);
+    // Update trade page price displays if trade page is instantiated
+    if (this.tradePage && this.tradePage.selectedCoin) {
+      this.tradePage.updatePriceDisplay();
+      this.tradePage.updateBuySummary();
+      this.tradePage.updateSellSummary();
     }
   }
 
