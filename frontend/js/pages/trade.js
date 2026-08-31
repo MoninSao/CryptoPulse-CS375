@@ -418,6 +418,10 @@ class TradePage {
         this.userHoldings = new Map(this.app.holdings);
       }
 
+      // Refresh sell form's available balance now that holdings changed
+      this.updateSellMaxQuantity();
+      this.updateSellSummary();
+
       // Show success message
       this.app.showToast(
         `✅ Successfully bought ${quantity.toFixed(6)} ${this.selectedCoin.toUpperCase()}`,
