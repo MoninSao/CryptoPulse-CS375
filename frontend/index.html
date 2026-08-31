@@ -184,20 +184,18 @@
         <div class="page-header">
           <h1>Portfolio</h1>
           <p class="subtitle">Your holdings overview</p>
+          <p class="update-timestamp" id="portfolio-timestamp"></p>
         </div>
-        
+
         <div class="portfolio-summary">
           <div class="summary-card">
             <h3>Total Value</h3>
-            <p class="summary-value" id="total-value">$0.00</p>
+            <p class="summary-value" id="portfolio-total-value">$0.00</p>
           </div>
           <div class="summary-card">
-            <h3>Total Cost Basis</h3>
-            <p class="summary-value" id="total-cost-basis">$0.00</p>
-          </div>
-          <div class="summary-card">
-            <h3>Gain/Loss</h3>
-            <p class="summary-value" id="total-gain-loss">$0.00</p>
+            <h3>Total Unrealized P&amp;L</h3>
+            <p class="summary-value" id="portfolio-total-pnl">$0.00</p>
+            <p class="summary-subvalue" id="portfolio-total-pnl-percent">0.00%</p>
           </div>
         </div>
 
@@ -205,16 +203,17 @@
           <table id="holdings-table">
             <thead>
               <tr>
-                <th>Coin</th>
+                <th>Symbol</th>
                 <th>Quantity</th>
+                <th>Avg Cost</th>
                 <th>Current Price</th>
-                <th>Value</th>
-                <th>Cost Basis</th>
-                <th>Gain/Loss</th>
+                <th>Current Value</th>
+                <th>P&amp;L</th>
+                <th>P&amp;L %</th>
               </tr>
             </thead>
             <tbody id="holdings-tbody">
-              <!-- Holdings will be injected here -->
+              <tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">Loading holdings...</td></tr>
             </tbody>
           </table>
         </div>
@@ -228,11 +227,29 @@
         </div>
 
         <div class="history-filters">
-          <select id="history-filter" class="form-control">
-            <option value="">All Trades</option>
-            <option value="buy">Buys Only</option>
-            <option value="sell">Sells Only</option>
-          </select>
+          <div class="filter-group">
+            <label for="history-symbol-filter">Symbol</label>
+            <select id="history-symbol-filter" class="form-control">
+              <option value="">All Symbols</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="history-type-filter">Type</label>
+            <select id="history-type-filter" class="form-control">
+              <option value="">All Trades</option>
+              <option value="buy">Buys Only</option>
+              <option value="sell">Sells Only</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="history-from-filter">From</label>
+            <input type="date" id="history-from-filter" class="form-control" />
+          </div>
+          <div class="filter-group">
+            <label for="history-to-filter">To</label>
+            <input type="date" id="history-to-filter" class="form-control" />
+          </div>
+          <button type="button" id="history-clear-filters" class="btn btn-outline btn-sm">Clear</button>
         </div>
 
         <div class="history-table">
@@ -240,17 +257,23 @@
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Type</th>
-                <th>Coin</th>
+                <th>Symbol</th>
+                <th>Action</th>
                 <th>Quantity</th>
-                <th>Price</th>
-                <th>Total</th>
+                <th>Unit Price</th>
+                <th>Total Value</th>
               </tr>
             </thead>
             <tbody id="trades-tbody">
-              <!-- Trade history will be injected here -->
+              <tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">Loading trades...</td></tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="pagination" id="history-pagination">
+          <button type="button" id="history-prev-page" class="btn btn-outline btn-sm" disabled>Prev</button>
+          <span id="history-page-indicator" class="pagination-indicator">Page 1 of 1</span>
+          <button type="button" id="history-next-page" class="btn btn-outline btn-sm" disabled>Next</button>
         </div>
       </section>
     </main>
@@ -271,6 +294,8 @@
   <script src="js/api.js"></script>
   <script src="js/websocket.js"></script>
   <script src="js/pages/trade.js"></script>
+  <script src="js/pages/portfolio.js"></script>
+  <script src="js/pages/history.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

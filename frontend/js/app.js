@@ -13,6 +13,8 @@ class CryptoPulseApp {
     this.isInitialized = false;
     this.lastUpdateTime = null; // Track last update timestamp
     this.tradePage = null; // Trade page component instance
+    this.portfolioPage = null; // Portfolio page component instance
+    this.historyPage = null; // History page component instance
   }
 
   /**
@@ -132,15 +134,8 @@ class CryptoPulseApp {
    * Setup event listeners
    */
   setupEventListeners() {
-    // History filter
-    const historyFilter = document.getElementById('history-filter');
-    if (historyFilter) {
-      historyFilter.addEventListener('change', (e) => {
-        this.renderHistoryPage(e.target.value);
-      });
-    }
-
-    // Note: Trade form listeners are now handled by TradePage component
+    // Note: Trade form listeners are handled by TradePage; history filters
+    // and pagination are handled by HistoryPage.
   }
 
   /**
@@ -159,18 +154,17 @@ class CryptoPulseApp {
         this.lastUpdateTime = pricesData.timestamp;
       }
 
-      // Load portfolio holdings
-      const holdings = await api.getHoldings();
-      if (holdings && Array.isArray(holdings)) {
-        holdings.forEach(holding => {
-          this.holdings.set(holding.coin, holding);
-        });
-      }
-
-      // Load trade history
-      const trades = await api.getTrades();
-      if (trades) {
-        this.trades = Array.isArray(trades) ? trades : [];
+      // Load portfolio holdings (used by TradePage for sell-max validation;
+      // the Portfolio page fetches its own richer copy with P&L on entry)
+      const holdingsData = await api.getHoldings();
+      if (holdingsData && Array.isArray(holdingsData.holdings)) {
+        this.holdings = new Map(
+          holdingsData.holdings.map(h => [h.symbol, {
+            symbol: h.symbol,
+            quantity: parseFloat(h.quantity),
+            avg_cost_basis: parseFloat(h.avg_cost_basis)
+          }])
+        );
       }
 
       console.log('✅ Initial data loaded');
@@ -276,58 +270,13 @@ class CryptoPulseApp {
    * Render portfolio page
    */
   async renderPortfolioPage() {
-    // Update summary
-    let totalValue = 0;
-    let totalCostBasis = 0;
-
-    this.holdings.forEach(holding => {
-      const currentPrice = this.prices.get(holding.coin) || 0;
-      const value = holding.quantity * currentPrice;
-      const costBasis = holding.cost_basis || 0;
-
-      totalValue += value;
-      totalCostBasis += costBasis;
-    });
-
-    const gainLoss = totalValue - totalCostBasis;
-
-    document.getElementById('total-value').textContent = CryptoPulseAPI.formatCurrency(totalValue);
-    document.getElementById('total-cost-basis').textContent = CryptoPulseAPI.formatCurrency(totalCostBasis);
-    document.getElementById('total-gain-loss').textContent = CryptoPulseAPI.formatCurrency(gainLoss);
-
-    // Render holdings table
-    const tbody = document.getElementById('holdings-tbody');
-    if (tbody) {
-      tbody.innerHTML = '';
-
-      if (this.holdings.size === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No holdings yet</td></tr>';
-        return;
-      }
-
-      this.holdings.forEach(holding => {
-        const currentPrice = this.prices.get(holding.coin) || 0;
-        const value = holding.quantity * currentPrice;
-        const costBasis = holding.cost_basis || 0;
-        const holdingGainLoss = value - costBasis;
-        const holdingGainLossPercent = costBasis > 0 ? (holdingGainLoss / costBasis) * 100 : 0;
-
-        const row = document.createElement('tr');
-        row.innerHTML = `
-          <td>${holding.coin.toUpperCase()}</td>
-          <td>${CryptoPulseAPI.formatNumber(holding.quantity)}</td>
-          <td>${CryptoPulseAPI.formatCurrency(currentPrice)}</td>
-          <td>${CryptoPulseAPI.formatCurrency(value)}</td>
-          <td>${CryptoPulseAPI.formatCurrency(costBasis)}</td>
-          <td>
-            <span class="price-change ${holdingGainLoss >= 0 ? 'positive' : 'negative'}">
-              ${CryptoPulseAPI.formatCurrency(holdingGainLoss)} (${holdingGainLossPercent.toFixed(2)}%)
-            </span>
-          </td>
-        `;
-        tbody.appendChild(row);
-      });
+    // Initialize portfolio page component if not already done
+    if (!this.portfolioPage) {
+      this.portfolioPage = new PortfolioPage(this);
     }
+
+    // Render the portfolio page component
+    await this.portfolioPage.render();
   }
 
   /**
@@ -346,38 +295,14 @@ class CryptoPulseApp {
   /**
    * Render history page
    */
-  async renderHistoryPage(filter = null) {
-    const tbody = document.getElementById('trades-tbody');
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    let trades = this.trades;
-    if (filter) {
-      trades = trades.filter(t => t.type === filter);
+  async renderHistoryPage() {
+    // Initialize history page component if not already done
+    if (!this.historyPage) {
+      this.historyPage = new HistoryPage(this);
     }
 
-    if (trades.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No trades yet</td></tr>';
-      return;
-    }
-
-    trades.forEach(trade => {
-      const row = document.createElement('tr');
-      row.innerHTML = `
-        <td>${CryptoPulseAPI.formatDate(trade.created_at)}</td>
-        <td>
-          <span class="price-change ${trade.type === 'buy' ? 'positive' : 'negative'}">
-            ${trade.type.toUpperCase()}
-          </span>
-        </td>
-        <td>${trade.coin.toUpperCase()}</td>
-        <td>${CryptoPulseAPI.formatNumber(trade.quantity)}</td>
-        <td>${CryptoPulseAPI.formatCurrency(trade.price_per_unit)}</td>
-        <td>${CryptoPulseAPI.formatCurrency(trade.quantity * trade.price_per_unit)}</td>
-      `;
-      tbody.appendChild(row);
-    });
+    // Render the history page component
+    await this.historyPage.render();
   }
 
   /**
@@ -398,9 +323,9 @@ class CryptoPulseApp {
     // Update market page
     this.renderMarketPage();
 
-    // Update portfolio page if visible
-    if (router.getCurrentPage() === 'portfolio') {
-      this.renderPortfolioPage();
+    // Update portfolio page if visible (recompute from live prices, no re-fetch)
+    if (router.getCurrentPage() === 'portfolio' && this.portfolioPage) {
+      this.portfolioPage.onPriceUpdate();
     }
 
     // Update trade page price displays if trade page is instantiated

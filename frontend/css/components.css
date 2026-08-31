@@ -277,6 +277,56 @@
   color: var(--color-primary);
 }
 
+.summary-value.positive {
+  color: var(--color-success);
+}
+
+.summary-value.negative {
+  color: var(--color-danger);
+}
+
+.summary-subvalue {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  margin-top: var(--space-xs);
+  color: var(--text-secondary);
+}
+
+.summary-subvalue.positive {
+  color: var(--color-success);
+}
+
+.summary-subvalue.negative {
+  color: var(--color-danger);
+}
+
+/*  Live Price Flash  */
+.flash-up {
+  animation: flashUp 900ms ease-out;
+}
+
+.flash-down {
+  animation: flashDown 900ms ease-out;
+}
+
+@keyframes flashUp {
+  0% {
+    background-color: rgba(6, 214, 160, 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+@keyframes flashDown {
+  0% {
+    background-color: rgba(247, 37, 133, 0.35);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
 /*  Forms  */
 .form-group {
   margin-bottom: var(--space-lg);
@@ -451,8 +501,40 @@ table tbody tr:last-child td {
 }
 
 .history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-lg);
   margin-bottom: var(--space-lg);
-  max-width: 300px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  min-width: 160px;
+}
+
+.filter-group label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: var(--font-weight-semibold);
+}
+
+/*  Pagination  */
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  margin-top: var(--space-lg);
+}
+
+.pagination-indicator {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
 }
 
 /*  Loading Spinner  */

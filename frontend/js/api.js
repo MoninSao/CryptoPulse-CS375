@@ -115,6 +115,20 @@ class CryptoPulseAPI {
     return this.request(`/trades${query}`);
   }
 
+  // Get paginated trade history with optional symbol/type/date-range filters
+  async getTradeHistory(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.symbol) params.set('symbol', filters.symbol);
+    if (filters.type) params.set('type', filters.type);
+    if (filters.from) params.set('from', filters.from);
+    if (filters.to) params.set('to', filters.to);
+    if (filters.page) params.set('page', filters.page);
+    if (filters.limit) params.set('limit', filters.limit);
+
+    const query = params.toString();
+    return this.request(`/trades/history${query ? `?${query}` : ''}`);
+  }
+
   // Get trade by ID
   async getTrade(tradeId) {
     return this.request(`/trades/${tradeId}`);
