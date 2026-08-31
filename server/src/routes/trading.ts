@@ -1,8 +1,43 @@
 import { Router, Request, Response } from 'express';
 import { executeTrade } from '../services/tradeService';
 import { getPriceForSymbol } from '../services/priceService';
+import { getTradesFiltered } from '../db/queries/tradeQueries';
 
 const router = Router();
+
+router.get('/history', async (req: Request, res: Response) => {
+  try {
+    const { symbol, type, from, to, page, limit } = req.query;
+
+    if (type !== undefined && type !== 'buy' && type !== 'sell') {
+      return res.status(400).json({
+        error: 'Invalid filter',
+        message: 'type must be "buy" or "sell"',
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    const result = await getTradesFiltered({
+      symbol: typeof symbol === 'string' ? symbol : undefined,
+      type: type as 'buy' | 'sell' | undefined,
+      from: typeof from === 'string' ? from : undefined,
+      to: typeof to === 'string' ? to : undefined,
+      page: page ? parseInt(page as string, 10) : undefined,
+      limit: limit ? parseInt(limit as string, 10) : undefined,
+    });
+
+    res.status(200).json(result);
+  } catch (error) {
+    const err = error as Error;
+    console.error('Error fetching trade history:', err.message);
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: err.message,
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
 
 router.post('/buy', async (req: Request, res: Response) => {
   try {

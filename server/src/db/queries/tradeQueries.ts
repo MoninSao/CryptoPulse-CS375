@@ -71,3 +71,65 @@ export async function getAllTrades(): Promise<Trade[]> {
 
   return (data || []) as Trade[];
 }
+
+export interface TradeHistoryFilters {
+  symbol?: string;
+  type?: 'buy' | 'sell';
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedTrades {
+  trades: Trade[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+// Fetch trades with optional symbol/type/date-range filters, paginated, ordered by created_at DESC
+export async function getTradesFiltered(filters: TradeHistoryFilters): Promise<PaginatedTrades> {
+  const page = filters.page && filters.page > 0 ? filters.page : 1;
+  const limit = filters.limit && filters.limit > 0 ? filters.limit : 20;
+  const rangeFrom = (page - 1) * limit;
+  const rangeTo = rangeFrom + limit - 1;
+
+  let query = supabase
+    .from('trades')
+    .select('*', { count: 'exact' })
+    .order('created_at', { ascending: false });
+
+  if (filters.symbol) {
+    query = query.eq('symbol', filters.symbol.toUpperCase());
+  }
+
+  if (filters.type) {
+    query = query.eq('type', filters.type);
+  }
+
+  if (filters.from) {
+    query = query.gte('created_at', filters.from);
+  }
+
+  if (filters.to) {
+    query = query.lte('created_at', filters.to);
+  }
+
+  const { data, error, count } = await query.range(rangeFrom, rangeTo);
+
+  if (error) {
+    throw new Error(`Failed to fetch trade history: ${error.message}`);
+  }
+
+  const total = count ?? 0;
+
+  return {
+    trades: (data || []) as Trade[],
+    total,
+    page,
+    limit,
+    total_pages: Math.max(1, Math.ceil(total / limit)),
+  };
+}
