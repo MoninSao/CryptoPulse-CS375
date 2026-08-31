@@ -1,6 +1,7 @@
 import { getAllCoinPrices } from '../external_api/coingecko';
 import { getRedis } from '../cache/redis';
-import { getAllCachedPrices, getAllCached24hChanges } from './priceService';
+import { getAllCachedPrices, getAllCached24hChanges, getAllCachedMeta } from './priceService';
+import { CoinMeta } from '../external_api/types';
 
 // Store the interval ID so we can stop it later
 let pollingInterval: NodeJS.Timeout | null = null;
@@ -10,7 +11,7 @@ let writtenCount = 0;
 let errorCount = 0;
 
 // Import broadcast function dynamically to avoid circular dependency
-let broadcastPrices: ((prices: Record<string, number>, changes: Record<string, number>) => void) | null = null;
+let broadcastPrices: ((prices: Record<string, number>, changes: Record<string, number>, meta: Record<string, CoinMeta>) => void) | null = null;
 
 /**
  * Start the background price polling service
@@ -42,7 +43,21 @@ export async function startPricePoller(): Promise<void> {
 async function pollOnce(): Promise<void> {
   try {
     // STEP 1: Fetch all coin prices (uses cache if available)
-    const prices = await getAllCoinPrices();
+    const allPrices = await getAllCoinPrices();
+
+    // STEP 1b: Ticker symbols are NOT unique on CoinGecko - thousands of low-cap
+    // and joke coins reuse well-known symbols (e.g. 11 different coins share "BTC").
+    // Since we key Redis by symbol, keep only the best-ranked coin per symbol so a
+    // real coin's price/logo can't get clobbered by an unrelated low-cap duplicate.
+    // getAllCoinPrices() returns coins pre-sorted by market_cap_desc, so the first
+    // occurrence of a symbol is always its best-ranked coin.
+    const bestBySymbol = new Map<string, typeof allPrices[number]>();
+    for (const coin of allPrices) {
+      if (!bestBySymbol.has(coin.symbol)) {
+        bestBySymbol.set(coin.symbol, coin);
+      }
+    }
+    const prices = Array.from(bestBySymbol.values());
 
     // STEP 2: Write each price to Redis with individual keys
     const redis = getRedis();
@@ -53,6 +68,7 @@ async function pollOnce(): Promise<void> {
         // Create Redis key: "price:BTC", "price:ETH", etc.
         const priceKey = `price:${coin.symbol}`;
         const changeKey = `change:${coin.symbol}`;
+        const metaKey = `meta:${coin.symbol}`;
 
         // Store the price with 10 second expiration
         await redis.setex(
@@ -69,6 +85,15 @@ async function pollOnce(): Promise<void> {
             coin.change_24h.toString()
           );
         }
+
+        // Store display metadata (name/logo) - changes rarely, so a longer
+        // TTL keeps it from flickering out between poll cycles
+        const meta: CoinMeta = {
+          name: coin.name,
+          image: coin.image,
+          market_cap_rank: coin.market_cap_rank,
+        };
+        await redis.setex(metaKey, 60, JSON.stringify(meta));
 
         localWriteCount++;
       } catch (error) {
@@ -90,7 +115,8 @@ async function pollOnce(): Promise<void> {
     if (broadcastPrices) {
       const pricesMap = await getAllCachedPrices();
       const changesMap = await getAllCached24hChanges();
-      broadcastPrices(pricesMap, changesMap);
+      const metaMap = await getAllCachedMeta();
+      broadcastPrices(pricesMap, changesMap, metaMap);
     }
 
   } catch (error) {

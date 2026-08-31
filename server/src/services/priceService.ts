@@ -1,5 +1,6 @@
 import { getAllCoinPrices, getCoinPriceBySymbol } from '../external_api/coingecko';
 import { getRedis } from '../cache/redis';
+import { CoinMeta } from '../external_api/types';
 
 /**
  * Get price for a single coin symbol
@@ -114,6 +115,45 @@ export async function getAllCached24hChanges(): Promise<Record<string, number>> 
 
   } catch (error) {
     console.error('❌ Error fetching cached 24h changes:', error);
+    return {};
+  }
+}
+
+/**
+ * Get ALL cached coin display metadata (name/logo) from Redis
+ * Returns: { BTC: { name: "Bitcoin", image: "...", market_cap_rank: 1 }, ... }
+ */
+export async function getAllCachedMeta(): Promise<Record<string, CoinMeta>> {
+  try {
+    const redis = getRedis();
+
+    // Find all Redis keys matching "meta:*" pattern
+    const keys = await redis.keys('meta:*');
+
+    if (keys.length === 0) {
+      console.warn('⚠️  No cached coin metadata found in Redis');
+      return {};
+    }
+
+    // Retrieve all values in one batch operation
+    const values = await redis.mget(...keys);
+
+    // Transform into map: { symbol → { name, image, market_cap_rank } }
+    const metaMap: Record<string, CoinMeta> = {};
+
+    keys.forEach((key, index) => {
+      const symbol = key.replace('meta:', '');
+      const value = values[index];
+      if (value !== null && value !== undefined) {
+        metaMap[symbol] = JSON.parse(value);
+      }
+    });
+
+    console.log(`✅ Retrieved ${Object.keys(metaMap).length} cached coin metadata entries from Redis`);
+    return metaMap;
+
+  } catch (error) {
+    console.error('❌ Error fetching cached coin metadata:', error);
     return {};
   }
 }
