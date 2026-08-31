@@ -6,9 +6,12 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+require('dotenv').config();
 
 const PORT = process.env.FRONTEND_PORT || 3000;
 const FRONTEND_DIR = __dirname;
+const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:4000/api';
+const WEBSOCKET_URL = process.env.WEBSOCKET_URL || 'ws://localhost:4000/ws/prices';
 
 // MIME types
 const mimeTypes = {
@@ -49,6 +52,18 @@ const server = http.createServer((req, res) => {
         res.writeHead(500, { 'Content-Type': 'text/plain' });
         res.end('500 Internal Server Error');
         return;
+      }
+
+      // Inject config into HTML files
+      if (ext === '.html') {
+        const configScript = `
+    <script>
+      window.CRYPTOPULSE_CONFIG = {
+        API_BASE_URL: '${API_BASE_URL}',
+        WEBSOCKET_URL: '${WEBSOCKET_URL}'
+      };
+    </script>`;
+        content = content.toString().replace('</head>', `${configScript}\n  </head>`);
       }
 
       res.writeHead(200, { 'Content-Type': contentType });

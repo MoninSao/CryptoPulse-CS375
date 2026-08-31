@@ -3,7 +3,9 @@
  * Handles all HTTP requests to the backend API
  */
 
-const API_BASE_URL = process.env.API_URL || 'http://localhost:4000/api';
+const API_BASE_URL = (typeof window !== 'undefined' && window.CRYPTOPULSE_CONFIG?.API_BASE_URL) 
+  ? window.CRYPTOPULSE_CONFIG.API_BASE_URL 
+  : 'http://localhost:4000/api';
 
 class CryptoPulseAPI {
   constructor() {

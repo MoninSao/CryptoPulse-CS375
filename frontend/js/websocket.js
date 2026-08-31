@@ -17,12 +17,17 @@ class PriceWebSocket {
   }
 
   /**
-   * Get WebSocket URL based on current location
+   * Get WebSocket URL based on environment config or current location
    */
   getWebSocketURL() {
+    // Use injected config if available
+    if (typeof window !== 'undefined' && window.CRYPTOPULSE_CONFIG?.WEBSOCKET_URL) {
+      return window.CRYPTOPULSE_CONFIG.WEBSOCKET_URL;
+    }
+    
+    // Fallback: derive from current location
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = process.env.WS_URL || `${window.location.hostname}:4000`;
-    return `${protocol}//${host}/ws/prices`;
+    return `${protocol}//${window.location.hostname}:4000/ws/prices`;
   }
 
   /**
