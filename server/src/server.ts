@@ -18,7 +18,24 @@ const PORT = process.env.PORT || 4000;
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
+
+// Allow the production origin(s) from CORS_ORIGIN (comma-separated) plus any
+// Vercel preview deployment for this project (e.g. crypto-pulse-cs-375-<hash>-<team>.vercel.app),
+// since preview URLs are generated per-deploy and can't be pinned to one static value.
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const vercelPreviewPattern = /^https:\/\/crypto-pulse-cs-375[a-z0-9-]*\.vercel\.app$/;
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin) || vercelPreviewPattern.test(origin)) {
+      return callback(null, true);
+    }
+    callback(new Error(`Origin ${origin} not allowed by CORS`));
+  },
+}));
 
 // Request logging middleware
 // Middleware: Log all incoming HTTP requests to the console

@@ -24,6 +24,9 @@ services:
       - key: COINGECKO_API_KEY
         sync: false
       - key: CORS_ORIGIN
+        # Comma-separated list of allowed origins. Vercel preview deployments
+        # (crypto-pulse-cs-375-<hash>-<team>.vercel.app) are matched separately
+        # in server.ts and don't need to be listed here.
         value: https://crypto-pulse-cs-375.vercel.app
 
   - type: redis
