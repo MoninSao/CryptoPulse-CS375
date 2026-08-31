@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getAllCachedPrices, getAllCached24hChanges } from '../services/priceService';
+import { getAllCachedPrices, getAllCached24hChanges, getAllCachedMeta } from '../services/priceService';
 
 const router = Router();
 
@@ -19,19 +19,24 @@ const router = Router();
  *     "ETH": -1.3,
  *     "SOL": 5.2
  *   },
+ *   "meta": {
+ *     "BTC": { "name": "Bitcoin", "image": "https://...", "market_cap_rank": 1 }
+ *   },
  *   "timestamp": "2026-08-13T14:30:45.123Z"
  * }
  */
 router.get('/prices', async (req, res) => {
   try {
-    // Fetch all cached prices and 24h changes from Redis
+    // Fetch all cached prices, 24h changes, and display metadata from Redis
     const prices = await getAllCachedPrices();
     const changes = await getAllCached24hChanges();
+    const meta = await getAllCachedMeta();
 
     // Build response with timestamp
     const response = {
       prices,
       changes,
+      meta,
       timestamp: new Date().toISOString(),
     };
 

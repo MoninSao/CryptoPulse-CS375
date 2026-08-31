@@ -8,6 +8,7 @@ import { startPricePoller, stopPricePoller } from "./services/pricePoller";
 import pricesRouter from "./routes/prices";
 import tradingRouter from "./routes/trading";
 import portfolioRouter from "./routes/portfolio";
+import { CoinMeta } from "./external_api/types";
 
 const app = express();
 const httpServer = createServer(app);
@@ -29,16 +30,17 @@ app.use((req, res, next) => {
 });
 
 /**
- * Broadcast prices and 24h changes to all WebSocket clients
+ * Broadcast prices, 24h changes, and display metadata to all WebSocket clients
  * Called by price poller to push real-time updates
  */
-export function broadcastPrices(prices: Record<string, number>, changes: Record<string, number>): void {
+export function broadcastPrices(prices: Record<string, number>, changes: Record<string, number>, meta: Record<string, CoinMeta>): void {
   if (wss.clients.size > 0) {
     const message = JSON.stringify({
       type: 'prices',
       data: {
         prices,
-        changes
+        changes,
+        meta
       },
       timestamp: new Date().toISOString()
     });
