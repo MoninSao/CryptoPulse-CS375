@@ -155,13 +155,24 @@ class CryptoPulseAPI {
     }
   }
 
+  // Pick decimal precision based on magnitude, so low-value coins
+  // (e.g. SHIB at $0.00000813) don't round down to "$0.00"
+  static getPriceDecimals(value) {
+    const abs = Math.abs(value);
+    if (abs === 0 || abs >= 1) return 2;
+    if (abs >= 0.01) return 4;
+    if (abs >= 0.0001) return 6;
+    return 8;
+  }
+
   // Format currency
   static formatCurrency(value, currency = 'USD') {
+    const decimals = this.getPriceDecimals(value);
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: currency,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
     }).format(value);
   }
 
