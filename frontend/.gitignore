@@ -38,6 +38,7 @@ Thumbs.db
 dist/
 build/
 out/
+config.js
 
 # Logs
 logs/
