@@ -7,6 +7,7 @@ class CryptoPulseApp {
   constructor() {
     this.prices = new Map(); // Cache for current prices
     this.changes = new Map(); // Cache for 24h changes
+    this.meta = new Map(); // Cache for coin display metadata (name/logo)
     this.holdings = new Map(); // Cache for holdings
     this.trades = []; // Cache for trades
     this.isInitialized = false;
@@ -98,10 +99,11 @@ class CryptoPulseApp {
     });
 
     // Listen for price updates
-    priceWebSocket.on('prices', ({ prices, changes, timestamp }) => {
+    priceWebSocket.on('prices', ({ prices, changes, meta, timestamp }) => {
       console.log('💰 Price update received:', Object.keys(prices).length, 'coins');
       this.prices = new Map(Object.entries(prices));
       this.changes = new Map(Object.entries(changes || {}));
+      this.meta = new Map(Object.entries(meta || {}));
       this.lastUpdateTime = timestamp;
       this.updatePriceDisplays();
     });
@@ -153,6 +155,7 @@ class CryptoPulseApp {
       if (pricesData) {
         this.prices = new Map(Object.entries(pricesData.prices || {}));
         this.changes = new Map(Object.entries(pricesData.changes || {}));
+        this.meta = new Map(Object.entries(pricesData.meta || {}));
         this.lastUpdateTime = pricesData.timestamp;
       }
 
@@ -192,22 +195,32 @@ class CryptoPulseApp {
       return;
     }
 
-    // Get top 10 coins by sorting and limiting
+    // Get top 10 coins by market cap rank (unranked coins sort last)
     const sortedCoins = Array.from(this.prices.entries())
+      .sort(([coinIdA], [coinIdB]) => {
+        const rankA = this.meta.get(coinIdA)?.market_cap_rank ?? Infinity;
+        const rankB = this.meta.get(coinIdB)?.market_cap_rank ?? Infinity;
+        return rankA - rankB;
+      })
       .slice(0, 10);
 
     sortedCoins.forEach(([coinId, price]) => {
       const change24h = this.changes.get(coinId) || 0;
       const changeClass = change24h >= 0 ? 'positive' : 'negative';
       const changeSymbol = change24h >= 0 ? '+' : '';
-      
+      const meta = this.meta.get(coinId);
+      const coinName = meta?.name || coinId.toUpperCase();
+
       const card = document.createElement('div');
       card.className = 'market-card';
       card.innerHTML = `
         <div class="coin-header">
-          <div>
-            <div class="coin-name">${coinId.toUpperCase()}</div>
-            <div class="coin-symbol">${coinId.toLowerCase()}</div>
+          <div class="coin-identity">
+            ${meta?.image ? `<img class="coin-logo" src="${meta.image}" alt="${coinName}" onerror="this.remove()">` : ''}
+            <div>
+              <div class="coin-name">${coinName}</div>
+              <div class="coin-symbol">${coinId.toLowerCase()}</div>
+            </div>
           </div>
           <div class="coin-change ${changeClass}">
             ${changeSymbol}${change24h.toFixed(2)}%
